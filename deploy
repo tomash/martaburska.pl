@@ -1,0 +1,5 @@
+echo 'Building...' 
+gulp shortcode style theme
+echo 'Pushing...'
+rsync -avz --delete --exclude 'node_modules' . tomash@fateweaver:/home/tomash/martaburska.pl/
+
