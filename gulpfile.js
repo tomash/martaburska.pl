@@ -52,10 +52,10 @@ function shortcode() {
         .pipe(sass().on("error", sass.logError))
         .pipe(autoprefixer({ overrideBrowserslist: AUTOPREFIXER_BROWSERS }))
         .pipe(dest("./assets/css"))
+        .pipe(browserSync.stream())
         .pipe(csso())
         .pipe(rename({ suffix: ".min" }))
-        .pipe(dest("./assets/css"))
-        .pipe(browserSync.stream());
+        .pipe(dest("./assets/css"));
 }
 
 function theme() {
@@ -64,10 +64,10 @@ function theme() {
         .pipe(sass().on("error", sass.logError))
         .pipe(autoprefixer({ overrideBrowserslist: AUTOPREFIXER_BROWSERS }))
         .pipe(dest("./assets/css"))
+        .pipe(browserSync.stream())
         .pipe(csso())
         .pipe(rename({ suffix: ".min" }))
-        .pipe(dest("./assets/css"))
-        .pipe(browserSync.stream());
+        .pipe(dest("./assets/css"));
 }
 
 function style() {
@@ -76,10 +76,10 @@ function style() {
         .pipe(sass().on("error", sass.logError))
         .pipe(autoprefixer({ overrideBrowserslist: AUTOPREFIXER_BROWSERS }))
         .pipe(dest("./assets/css"))
+        .pipe(browserSync.stream())
         .pipe(csso())
         .pipe(rename({ suffix: ".min" }))
-        .pipe(dest("./assets/css"))
-        .pipe(browserSync.stream());
+        .pipe(dest("./assets/css"));
 }
 
 function watchFiles() {
