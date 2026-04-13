@@ -1,23 +1,27 @@
-const gulp = require("gulp");
-const plumberNotifier = require("gulp-plumber-notifier");
+const { src, dest, watch, series, parallel } = require("gulp");
+const plumber = require("gulp-plumber");
 const browserSync = require("browser-sync").create();
-const autoPrefixer = require("gulp-autoprefixer");
-const sass = require("gulp-sass");
-const csscomb = require("gulp-csscomb");
-const rename = require('gulp-rename');
+const autoprefixerImport = require("gulp-autoprefixer");
+const autoprefixer = autoprefixerImport.default || autoprefixerImport;
+const sass = require("gulp-sass")(require("sass"));
+const rename = require("gulp-rename");
 const csso = require("gulp-csso");
 const inject = require("gulp-inject");
-const series = require("stream-series");
+const streamSeries = require("stream-series");
 const uglify = require("gulp-uglify");
-const prettify = require("gulp-html-prettify");
 
-// Directories path
-var baseDir = "./assets/sass/base/";
-var layoutDir = "./assets/sass/layout/";
-var pagesDir = "./assets/sass/pages/";
-var themesDir = "./assets/sass/themes/";
-var shrotcodesDir = "./assets/sass/shortcodes/";
-var styleCss = [baseDir+"*.scss", layoutDir+"*.scss", pagesDir+"*.scss"];
+const paths = {
+    base: "./assets/sass/base/*.scss",
+    layout: "./assets/sass/layout/*.scss",
+    pages: "./assets/sass/pages/*.scss",
+    themes: "./assets/sass/themes/*.scss",
+    shortcodes: "./assets/sass/shortcodes/*.scss",
+    shortcodeEntry: "./assets/sass/shortcodes/shortcodes.scss",
+    styleEntry: "./assets/sass/style.scss",
+    html: "./*.html",
+    scripts: "./assets/js/*.js",
+    mainScript: "./assets/js/scripts.js"
+};
 
 // Autoprefixer config
 const AUTOPREFIXER_BROWSERS = [
@@ -34,66 +38,59 @@ const AUTOPREFIXER_BROWSERS = [
     "bb >= 10"
 ];
 
-// Server task
-gulp.task("serve", function() {
+function serve(done) {
     browserSync.init({
         server: "./",
         notify: false
     });
-});
+    done();
+}
 
-// Shortcode sass to css
-gulp.task("shortcode", function() {
-    return gulp.src(shrotcodesDir + "shortcodes.scss")
-        .pipe(plumberNotifier())
-        .pipe(sass())
-        .pipe(autoPrefixer(AUTOPREFIXER_BROWSERS))
-        .pipe(csscomb())
-        .pipe(gulp.dest("./assets/css"))
+function shortcode() {
+    return src(paths.shortcodeEntry)
+        .pipe(plumber())
+        .pipe(sass().on("error", sass.logError))
+        .pipe(autoprefixer({ overrideBrowserslist: AUTOPREFIXER_BROWSERS }))
+        .pipe(dest("./assets/css"))
         .pipe(browserSync.stream())
         .pipe(csso())
-        .pipe(rename({suffix:".min"}))
-        .pipe(gulp.dest("./assets/css"));
-});
+        .pipe(rename({ suffix: ".min" }))
+        .pipe(dest("./assets/css"));
+}
 
-// Theme sass to css
-gulp.task("theme", function() {
-    return gulp.src(themesDir + "*.scss")
-        .pipe(plumberNotifier())
-        .pipe(sass())
-        .pipe(autoPrefixer(AUTOPREFIXER_BROWSERS))
-        .pipe(csscomb())
-        .pipe(gulp.dest("./assets/css"))
+function theme() {
+    return src(paths.themes)
+        .pipe(plumber())
+        .pipe(sass().on("error", sass.logError))
+        .pipe(autoprefixer({ overrideBrowserslist: AUTOPREFIXER_BROWSERS }))
+        .pipe(dest("./assets/css"))
         .pipe(browserSync.stream())
         .pipe(csso())
-        .pipe(rename({suffix:".min"}))
-        .pipe(gulp.dest("./assets/css"));
-});
+        .pipe(rename({ suffix: ".min" }))
+        .pipe(dest("./assets/css"));
+}
 
-// Style sass to css
-gulp.task("style", function() {
-    return gulp.src("./assets/sass/style.scss")
-        .pipe(plumberNotifier())
-        .pipe(sass())
-        .pipe(autoPrefixer(AUTOPREFIXER_BROWSERS))
-        .pipe(csscomb())
-        .pipe(gulp.dest("./assets/css"))
+function style() {
+    return src(paths.styleEntry)
+        .pipe(plumber())
+        .pipe(sass().on("error", sass.logError))
+        .pipe(autoprefixer({ overrideBrowserslist: AUTOPREFIXER_BROWSERS }))
+        .pipe(dest("./assets/css"))
         .pipe(browserSync.stream())
         .pipe(csso())
-        .pipe(rename({suffix:".min"}))
-        .pipe(gulp.dest("./assets/css"));
-});
+        .pipe(rename({ suffix: ".min" }))
+        .pipe(dest("./assets/css"));
+}
 
-gulp.task("watch", ["serve"], function() {
-    gulp.watch(shrotcodesDir + "*.scss", ["shortcode"]);
-    gulp.watch(themesDir + "*.scss", ["theme"]);
-    gulp.watch(styleCss, ["style"]);
+function watchFiles() {
+    watch(paths.shortcodes, shortcode);
+    watch(paths.themes, theme);
+    watch([paths.base, paths.layout, paths.pages], style);
+    watch(paths.html).on("change", browserSync.reload);
+    watch(paths.scripts).on("change", browserSync.reload);
+}
 
-    gulp.watch("./*.html", browserSync.reload);
-    gulp.watch("./assets/js/*.js", browserSync.reload);
-});
-
-gulp.task("inject", function() {
+function injectAssets() {
     var vendorPaths = [
         "!./assets/vendor/jquery",
         "!./assets/vendor/slider-revolution/**",
@@ -106,7 +103,7 @@ gulp.task("inject", function() {
         "./assets/vendor/**/**/**"
     ];
 
-    var main = gulp.src([
+    var main = src([
         "./assets/vendor/modernizr/*.js",
         "./assets/vendor/jquery/**.js",
         "./assets/vendor/bootstrap/**/bootstrap.min.js",
@@ -115,8 +112,8 @@ gulp.task("inject", function() {
         read: false
     });
 
-    var project = gulp.src([
-        "./assets/js/scripts.js",
+    var project = src([
+        paths.mainScript,
         "./assets/css/shortcodes.css",
         "./assets/css/style.css",
         "./assets/css/default-theme.css"
@@ -126,30 +123,30 @@ gulp.task("inject", function() {
 
     var vendorJS = vendorPaths.map(function(item) { return item + "/*.js"; });
     var vendorCSS = vendorPaths.map(function(item) { return item + "/*.css"; });
-    var libs = gulp.src(vendorJS.concat(vendorCSS), {read:false});
+    var libs = src(vendorJS.concat(vendorCSS), { read: false });
 
-    return gulp.src("./*.html")
-        .pipe(inject(series(main, libs, project), {relative: true}))
-        .pipe(gulp.dest("./"));
+    return src(paths.html)
+        .pipe(inject(streamSeries(main, libs, project), { relative: true }))
+        .pipe(dest("./"));
+}
 
-    // return gulp.src("./200-resource-paths.html")
-    //     .pipe(inject(series(main, libs, project), {relative: true}))
-    //     .pipe(gulp.dest("./"));
-});
-
-gulp.task("script", function() {
-    return gulp.src("./assets/js/scripts.js")
-        .pipe(plumberNotifier())
+function script() {
+    return src(paths.mainScript)
+        .pipe(plumber())
         .pipe(uglify())
-        .pipe(rename({suffix:".min"}))
-        .pipe(gulp.dest("./assets/js/"));
+        .pipe(rename({ suffix: ".min" }))
+        .pipe(dest("./assets/js/"));
+}
 
-});
+const build = parallel(shortcode, style, theme);
+const dev = series(build, serve, watchFiles);
 
-gulp.task("html-prettify", function() {
-    gulp.src('./*.html')
-        .pipe(prettify({indent_char: " ", indent_size: 4}))
-        .pipe(gulp.dest("./"));
-});
-
-gulp.task("default", ["serve", "shortcode", "style", "theme", "watch"]);
+exports.serve = serve;
+exports.shortcode = shortcode;
+exports.theme = theme;
+exports.style = style;
+exports.watch = watchFiles;
+exports.inject = injectAssets;
+exports.script = script;
+exports.build = build;
+exports.default = dev;
